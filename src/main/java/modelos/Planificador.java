@@ -12,9 +12,11 @@ public class Planificador {
     private List suspendedReadyList;
     private List suspendedBlockedList;
     private ControladorSimulacion controlador;
+    private EventLogger logger;
     public int selectedAlgorithm;
 
-    public Planificador(List readyList, List blockedList, List exitList, List allProcess, List suspReadyList, List suspBlockList, ControladorSimulacion controlador) {
+    public Planificador(List readyList, List blockedList, List exitList, List allProcess, 
+                       List suspReadyList, List suspBlockList, ControladorSimulacion controlador) {
         this.controlador = controlador;
         this.readyList = readyList;
         this.blockedList = blockedList;
@@ -22,8 +24,8 @@ public class Planificador {
         this.allProcessList = allProcess;
         this.suspendedReadyList = suspReadyList;
         this.suspendedBlockedList = suspBlockList;
+        this.logger = new EventLogger();
     }
-
 
     public int getSelectedAlgorithm() {
         return selectedAlgorithm;
@@ -40,52 +42,57 @@ public class Planificador {
     public Proceso getProcess(){
         Proceso output = null;
         if(this.readyList.isEmpty()){
-        
-        if(selectedAlgorithm !=controlador.getPolitica()){
-            selectedAlgorithm = controlador.getPolitica();
-            sortReadyQueue(selectedAlgorithm);
+            if(selectedAlgorithm != controlador.getPolitica()){
+                selectedAlgorithm = controlador.getPolitica();
+                sortReadyQueue(selectedAlgorithm);
             }
+            
             Nodo pAux = this.readyList.getHead();
             this.readyList.delete(pAux);
-            //aqui hay que actulizar la interfaz
             output = (Proceso) pAux.getValue();
-            output.setEstado("running");
-       
+            output.setEstado("Ejecucion");
+            
+            logger.logEvent("Procesador selecciona Proceso " + output.getNombre() + " (ID: " + output.getId() + ")");
         }
-         //aqui hay que actulizar la interfaz
+        
         this.updateReadyList();
         this.updateProcessList();
+        
         if(output == null){
-            System.out.println("process null") ;
+            System.out.println("process null");
         }
         return output;    
     }
     
-    /** Ordenar la cola de procesos antes de la selección **/
     private void sortReadyQueue(int schedulingAlgorithm) {
         switch (schedulingAlgorithm) {
-            case 0: // FCFS (No requiere ordenamiento)
+            case 0: // FCFS
                 readyList = sortByWaitingTime(readyList);
+                logger.logEvent("Cambio de algoritmo a FCFS");
                 break;
-            case 1: // Round Robin (Mantiene el orden)
+            case 1: // Round Robin
                 readyList = sortByWaitingTime(readyList);
+                logger.logEvent("Cambio de algoritmo a Round Robin");
                 break;
-            case 2: // SPN - Ordenar por menor duración
+            case 2: // SPN
                 readyList = sortByDuration(readyList);
+                logger.logEvent("Cambio de algoritmo a SPN");
                 break;
-            case 3: // SRT - Ordenar por menor tiempo restante
+            case 3: // SRT
                 readyList = sortByRemainingTime(readyList);
+                logger.logEvent("Cambio de algoritmo a SRT");
                 break;
-            case 4: // HRR - Ordenar por mayor Response Ratio
+            case 4: // HRRN
                 readyList = sortByHRR(readyList);
+                logger.logEvent("Cambio de algoritmo a HRRN");
                 break;
-            case 5: // FB - Feedback (Retroalimentación)
+            case 5: // FB
                 readyList = sortByFeedback(readyList);
+                logger.logEvent("Cambio de algoritmo a Feedback");
                 break;
         }
     }
 
-    /** Métodos de Ordenamiento **/
     private List sortByWaitingTime(List list) {
         return bubbleSort(list, (p1, p2) -> Integer.compare(((Proceso) p2).getTiempoEspera(), ((Proceso) p1).getTiempoEspera()));
     }
@@ -105,7 +112,6 @@ public class Planificador {
         return bubbleSort(list, (p1, p2) -> Double.compare(getHRR((Proceso) p2), getHRR((Proceso) p1)));
     }
 
-    /** Nuevo método FB (Feedback) **/
     private List sortByFeedback(List list) {
         return bubbleSort(list, (p1, p2) -> Integer.compare(
             ((Proceso) p2).getTiempoEspera(),
@@ -114,7 +120,9 @@ public class Planificador {
     }
 
     private double getHRR(Proceso p) {
-        return (p.getTiempoEspera() + p.getInstrucciones()) / (double) p.getInstrucciones();
+        int tiempoServicio = p.getInstrucciones();
+        if(tiempoServicio == 0) return 0;
+        return (p.getTiempoEspera() + tiempoServicio) / (double) tiempoServicio;
     }
 
     private List bubbleSort(List list, Comparator comparator) {
@@ -140,14 +148,14 @@ public class Planificador {
 
     public boolean ifSRT(Proceso process){
         if(controlador.getPolitica() == 3){
-        Nodo current = this.readyList.getHead();
-        while (current != null) {
-            if (((Proceso) current.getValue()).getInstrucciones() - ((Proceso) current.getValue()).getMar() < 
-                    process.getInstrucciones()- process.getMar()) {
-                return true;
-            }
-            current = current.getpNext();
-        }    
+            Nodo current = this.readyList.getHead();
+            while (current != null) {
+                if (((Proceso) current.getValue()).getInstrucciones() - ((Proceso) current.getValue()).getMar() < 
+                        process.getInstrucciones()- process.getMar()) {
+                    return true;
+                }
+                current = current.getpNext();
+            }    
         }
         return false;
     }
@@ -161,15 +169,22 @@ public class Planificador {
         switch (state) {
             case "Bloqueado":
                 blockedList.appendLast(process);
+                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") entra en estado de bloqueo");
                 break;
             case "Listo":
                 readyList.appendLast(process);
                 break;
             case "Suspendido-Listo":
                 suspendedReadyList.appendLast(process);
+                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") suspendido (Listo)");
                 break;
             case "Suspendido-Bloqueado":
                 suspendedBlockedList.appendLast(process);
+                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") suspendido (Bloqueado)");
+                break;
+            case "Terminado":
+                exitList.appendLast(process);
+                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") TERMINADO");
                 break;
             default:
                 exitList.appendLast(process);
@@ -186,15 +201,22 @@ public class Planificador {
         switch (state) {
             case "Bloqueado":
                 blockedList.appendLast(process);
+                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") entra en estado de bloqueo");
                 break;
             case "Listo":
                 readyList.appendLast(process);
                 break;
             case "Suspendido-Listo":
                 suspendedReadyList.appendLast(process);
+                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") suspendido (Listo)");
                 break;
             case "Suspendido-Bloqueado":
                 suspendedBlockedList.appendLast(process);
+                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") suspendido (Bloqueado)");
+                break;
+            case "Terminado":
+                exitList.appendLast(process);
+                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") TERMINADO");
                 break;
             default:
                 exitList.appendLast(process);
@@ -204,7 +226,7 @@ public class Planificador {
         updateAllLists();
     }
 
-    public   void updateAllLists() {
+    public void updateAllLists() {
         updateReadyList();
         updateBlockedList();
         updateSuspendedLists();
@@ -237,10 +259,6 @@ public class Planificador {
         controlador.setListosSuspendidosText(displayReady.toString());
         controlador.setBloqueadosSuspendidosText(displayBlocked.toString());
     }
-    
-
-
-
 
     public void updateWaitingTime(){
         if(selectedAlgorithm != controlador.getPolitica()){
@@ -262,10 +280,11 @@ public class Planificador {
         Nodo pAux = this.blockedList.getHead();
         while(pAux!=null){
             if(id== ((Proceso)pAux.getValue()).getId()){
-                ((Proceso)pAux.getValue()).setEstado("ready");
+                ((Proceso)pAux.getValue()).setEstado("Listo");
                 ((Proceso)pAux.getValue()).setTiempoEspera(0);
                 blockedList.delete(pAux);
                 readyList.appendLast(pAux);
+                logger.logEvent("Proceso (ID: " + id + ") sale de bloqueo y entra a cola de listos");
                 break;                
             }
             pAux = pAux.getpNext();
@@ -329,7 +348,7 @@ public class Planificador {
         controlador.setSalidaText(display);
     }
     
-    public static String stringInterfaz(Proceso currentProcess){
+    public String stringInterfaz(Proceso currentProcess){
         String display = "\n ----------------------------------\n Id: " + currentProcess.getId() + 
                 "\n Estado: " + currentProcess.getEstado()+ 
                 "\n Nombre: " + currentProcess.getNombre() +
@@ -337,5 +356,9 @@ public class Planificador {
                 "\n MAR: " + currentProcess.getMar() +
                 "\n Espera: " + currentProcess.getTiempoEspera();
         return display;
+    }
+    
+    public EventLogger getLogger() {
+        return logger;
     }
 }

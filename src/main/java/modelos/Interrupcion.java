@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package modelos;
 
 import java.util.concurrent.Semaphore;
@@ -11,7 +7,6 @@ import micelaneos.*;
 import controlador.*;
 
 public class Interrupcion extends Thread {
-
     private int originCPU;
     private int exceptionCycle; 
     private ControladorSimulacion controlador; 
@@ -68,14 +63,8 @@ public class Interrupcion extends Thread {
         this.mutex = mutex;
     }
     
-    
-    
-    /**
-     * Clase para las interruciones
-     */
     @Override
     public void run(){
- 
         for(int i = 0; i <= this.exceptionCycle;i++){
             try {
                 sleep(controlador.getTiempo());
@@ -84,15 +73,11 @@ public class Interrupcion extends Thread {
             }
         }  
         try {
-            //Aqui va un semaforo
             mutex.acquire();
         } catch (InterruptedException ex) {
             Logger.getLogger(Interrupcion.class.getName()).log(Level.SEVERE, null, ex);
         }
         this.interruptionList.appendLast(this);
         mutex.release();
-        
     }
-
 }
-

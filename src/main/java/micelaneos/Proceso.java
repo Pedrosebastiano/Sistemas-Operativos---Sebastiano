@@ -3,14 +3,7 @@ package micelaneos;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/**
- * 
- * 
- * 
- * @author pedro
- */
 public class Proceso {
-
     private int id;
     private String nombre;
     private int instrucciones;
@@ -22,8 +15,15 @@ public class Proceso {
     private int prioridad;
     private String estado;
     private int tiempoEspera;
+    private int tiempoRespuesta;
+    private int tiempoInicio;
+    private int tiempoFinalizacion;
+    private boolean primerEjecucion;
 
     public Proceso() {
+        this.primerEjecucion = true;
+        this.tiempoInicio = -1;
+        this.tiempoFinalizacion = -1;
     }
 
     @JsonCreator
@@ -34,7 +34,6 @@ public class Proceso {
                    @JsonProperty("ciclosParaExcepcion") int ciclosParaExcepcion,
                    @JsonProperty("ciclosParaSatisfacerExcepcion") int ciclosParaSatisfacerExcepcion,
                    @JsonProperty("prioridad") int prioridad) {
-
         this.id = id;
         this.nombre = nombre;
         this.tipo = tipo;
@@ -44,11 +43,46 @@ public class Proceso {
         this.prioridad = prioridad;
         this.pc = 1;
         this.mar = 0;
-        this.tiempoEspera = 0;
-        this.estado = "Listo"; 
+        this.tiempoEspera = 1;
+        this.estado = "Listo";
+        this.primerEjecucion = true;
+        this.tiempoInicio = -1;
+        this.tiempoFinalizacion = -1;
+        this.tiempoRespuesta = 0;
     }
 
-    // === Getters y Setters ===
+    public int getTiempoRespuesta() {
+        return tiempoRespuesta;
+    }
+
+    public void setTiempoRespuesta(int tiempoRespuesta) {
+        this.tiempoRespuesta = tiempoRespuesta;
+    }
+
+    public int getTiempoInicio() {
+        return tiempoInicio;
+    }
+
+    public void setTiempoInicio(int tiempoInicio) {
+        this.tiempoInicio = tiempoInicio;
+    }
+
+    public int getTiempoFinalizacion() {
+        return tiempoFinalizacion;
+    }
+
+    public void setTiempoFinalizacion(int tiempoFinalizacion) {
+        this.tiempoFinalizacion = tiempoFinalizacion;
+    }
+
+    public boolean isPrimerEjecucion() {
+        return primerEjecucion;
+    }
+
+    public void setPrimerEjecucion(boolean primerEjecucion) {
+        this.primerEjecucion = primerEjecucion;
+    }
+
     public int getTiempoEspera() {
         return tiempoEspera;
     }
@@ -134,13 +168,13 @@ public class Proceso {
     }
 
     public void setEstado(String estado) {
-        if (estado.equals("Listo") ||
+        if (estado.equals("Nuevo") ||
+            estado.equals("Listo") ||
             estado.equals("Ejecucion") ||
             estado.equals("Bloqueado") ||
             estado.equals("Suspendido-Listo") ||
             estado.equals("Suspendido-Bloqueado") ||
             estado.equals("Terminado")) {
-            
             this.estado = estado;
         } else {
             System.err.println("Estado no reconocido: " + estado);

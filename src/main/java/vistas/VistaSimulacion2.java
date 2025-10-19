@@ -1,62 +1,55 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
+ */
 package vistas;
 
 import java.awt.BorderLayout;
-import java.awt.CardLayout;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
-import org.jfree.data.general.DefaultPieDataset;
+import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.renderer.category.StackedBarRenderer;
+import org.jfree.data.category.CategoryDataset;
+import org.jfree.data.category.DefaultCategoryDataset;
 import javax.swing.SwingUtilities;
+
+import javax.swing.JFrame;
 import java.awt.Color;
 import java.awt.Dimension;
 import org.jfree.chart.plot.PiePlot;
+import org.jfree.data.general.DefaultPieDataset;
 import micelaneos.*;
-import modelos.*;
-
-public class VistaSimulacion extends javax.swing.JFrame {
+import modelos.CPU;
+import modelos.Planificador;
+import modelos.Reloj;
+/**
+ *
+ * @author pedro
+ */
+public class VistaSimulacion2 extends javax.swing.JFrame {
     DefaultPieDataset dataset1;
     CPU cpu;
     Reloj reloj;
     List<Proceso> listolista;
     List<Proceso> todos;
-    PerformanceMetrics metrics;
-    Planificador planificador;
-    private int relojGlobal;
-    private ChartPanel chartPanel;
-    private boolean chartVisible = false;
-
-    public VistaSimulacion(int tiempo, int politica, List listo, List todos) {
+    /**
+     * Creates new form VistaSimulacion
+     */
+    public VistaSimulacion2(int tiempo,int politica, List listo,List todos) {
         initComponents();
         dataset1 = new DefaultPieDataset();
-        
-        // Inicializar el gráfico pero no mostrarlo aún
-        chartPanel = createPieChart(dataset1, "Utilización del CPU");
-        chartPanel.setPreferredSize(new Dimension(700, 400));
-        
+        jPanel1.setLayout(new BorderLayout());
+        jPanel1.add(createPieChart(dataset1,"CPU"), BorderLayout.CENTER);
         this.politica.setSelectedIndex(politica);
         this.tiempoinstruccion.setValue(tiempo);
         this.jLabel16.setText(tiempo + " ms");
         this.setResizable(false);
         this.setLocationRelativeTo(null);
         this.setVisible(true);
-        this.listolista = listo;
+        this.listolista =listo;
         this.todos = todos;
-        this.relojGlobal = 0;
-        this.uPcbs();
-        
-        // Thread para actualizar métricas cada 2 segundos
-        new Thread(() -> {
-            while (true) {
-                try {
-                    Thread.sleep(2000);
-                    if (metrics != null) {
-                        updateMetricsDisplay();
-                    }
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }).start();
     }
 
     public CPU getCpu() {
@@ -75,75 +68,46 @@ public class VistaSimulacion extends javax.swing.JFrame {
         this.reloj = reloj;
     }
     
-    public void setMetrics(PerformanceMetrics metrics) {
-        this.metrics = metrics;
-    }
-    
-    public void setPlanificador(Planificador planificador) {
-        this.planificador = planificador;
-    }
-    
-    public int getRelojGlobal() {
-        return relojGlobal;
-    }
-
-    public VistaSimulacion(){
+    public VistaSimulacion2(){
         initComponents();
         this.setResizable(false);
         this.setLocationRelativeTo(null);
     }
-
     private boolean validateInputs() {
-        try {
-            if (nombre.getText().trim().isEmpty() || duracion.getText().trim().isEmpty()) {
-                return false;
-            }
-            Integer.parseInt(duracion.getText().trim());
-            if (this.tipoproceso.getSelectedIndex() == 1) {
-                if (cicloexcep.getText().trim().isEmpty() || duracionexcep.getText().trim().isEmpty()) {
-                    return false;
-                }
-                Integer.parseInt(cicloexcep.getText().trim());
-                Integer.parseInt(duracionexcep.getText().trim());
-            }
-        } catch (NumberFormatException e) {
+    try {
+        if (nombre.getText().trim().isEmpty() || duracion.getText().trim().isEmpty()) {
             return false;
         }
-        return true;
+        Integer.parseInt(duracion.getText().trim());
+        if (this.tipoproceso.getSelectedIndex() == 1) {
+            if (cicloexcep.getText().trim().isEmpty() || duracionexcep.getText().trim().isEmpty()) {
+                return false;
+            }
+            Integer.parseInt(cicloexcep.getText().trim());
+            Integer.parseInt(duracionexcep.getText().trim());
+        }
+
+    } catch (NumberFormatException e) {
+        return false;
+    }
+    return true;
     }
 
     private void limpiarCampos() {
-        nombre.setText("");
-        duracion.setText("");
-        cicloexcep.setText("");
-        duracionexcep.setText("");
-        tipoproceso.setSelectedIndex(0);
+    nombre.setText("");
+    duracion.setText("");
+    cicloexcep.setText("");
+    duracionexcep.setText("");
+    tipoproceso.setSelectedIndex(0); // vuelve a CPU Bound por defecto
     }
 
+    
     public void setCPU(String t){
        this.cpu1.setText(t);
     }
 
-    public void uPcbs(){
-        String d = "";
-        Nodo p = todos.getHead();
-        while(p != null){
-           if (planificador != null) {
-    d += planificador.stringInterfaz((Proceso) p.getValue());
-}
-
-            p = p.getpNext();
-        }
-        this.setPcbs(d);
-    }
-
     public void setReloj(String t){
         this.relojglobal.setText(t);
-        try {
-            this.relojGlobal = Integer.parseInt(t);
-        } catch (NumberFormatException e) {
-            this.relojGlobal = 0;
-        }
     }
 
     public void setListos(String t) {
@@ -157,24 +121,20 @@ public class VistaSimulacion extends javax.swing.JFrame {
     public void setSalida(String t) {
         this.salida.setText(t);
     }
-
     public void setPcbs(String t){
         this.pcbs.setText(t);
     }
-
     public void setTiempoInstruccion(String i){
         this.relojglobal.setText(i);
     }
-
     public int getTiempoInstrucion(){
         return this.tiempoinstruccion.getValue();
     }
-
     public int getPolitica(){
         return this.politica.getSelectedIndex();
     }
-
-    private ChartPanel createPieChart(DefaultPieDataset dataset, String title) {
+    private ChartPanel createPieChart(DefaultPieDataset dataset,String title) {
+        
         dataset.setValue("Usuario", 0);
         dataset.setValue("Sistema Operativo", 0);
 
@@ -187,67 +147,26 @@ public class VistaSimulacion extends javax.swing.JFrame {
         plot.setSectionPaint("Sistema Operativo", Color.RED);
         
         ChartPanel chartPanel = new ChartPanel(pieChart);
+        chartPanel.setPreferredSize(new Dimension(670, 380));
         return chartPanel;
     }
-
     public void updateDataset(int chartNumber, String category, int value) {
-        SwingUtilities.invokeLater(() -> {
-            Number existingValue = dataset1.getValue(category);
-            int newValue = (existingValue == null ? 0 : existingValue.intValue()) + value;
-            dataset1.setValue(category, newValue);
-            if (chartPanel != null) {
-                chartPanel.repaint();
-            }
-        });
+    SwingUtilities.invokeLater(() -> {
+        Number existingValue = dataset1.getValue(category);
+        int newValue = (existingValue == null ? 0 : existingValue.intValue()) + value;
+        dataset1.setValue(category, newValue);
+        ((ChartPanel) jPanel1.getComponent(0)).repaint();
+    });
     }
 
-    public void setListosSuspendidos(String t) {
-        this.listosSuspendidos.setText(t);
-    }
-
-    public void setBloqueadosSuspendidos(String t) {
-        this.bloqueadosSuspendidos.setText(t);
-    }
     
-    public void updateMetrics(String metricsText) {
-        SwingUtilities.invokeLater(() -> {
-            this.metricsArea.setText(metricsText);
-        });
-    }
-    
-    private void updateMetricsDisplay() {
-        if (metrics != null) {
-            String metricsText = metrics.getMetricsString();
-            if (planificador != null) {
-                double fairness = metrics.getFairness(todos);
-                metricsText += String.format("\nEquidad: %.2f", fairness);
-            }
-            updateMetrics(metricsText);
-        }
-    }
-    
-    private void toggleChart() {
-        if (!chartVisible) {
-            // Mostrar gráfico
-            chartContainerPanel.removeAll();
-            chartContainerPanel.setLayout(new BorderLayout());
-            chartContainerPanel.add(chartPanel, BorderLayout.CENTER);
-            chartContainerPanel.revalidate();
-            chartContainerPanel.repaint();
-            toggleChartButton.setText("Ocultar Gráfico");
-            chartVisible = true;
-        } else {
-            // Ocultar gráfico
-            chartContainerPanel.removeAll();
-            chartContainerPanel.revalidate();
-            chartContainerPanel.repaint();
-            toggleChartButton.setText("Mostrar Gráfico de CPU");
-            chartVisible = false;
-        }
-    }
-
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
     @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">                          
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
         jTabbedPane1 = new javax.swing.JTabbedPane();
@@ -264,10 +183,6 @@ public class VistaSimulacion extends javax.swing.JFrame {
         tipoproceso = new javax.swing.JComboBox<>();
         jLabel13 = new javax.swing.JLabel();
         jPanel1 = new javax.swing.JPanel();
-        jScrollPane10 = new javax.swing.JScrollPane();
-        metricsArea = new javax.swing.JTextArea();
-        toggleChartButton = new javax.swing.JButton();
-        chartContainerPanel = new javax.swing.JPanel();
         jPanel3 = new javax.swing.JPanel();
         tiempoinstruccion = new javax.swing.JSlider();
         jLabel15 = new javax.swing.JLabel();
@@ -366,26 +281,6 @@ public class VistaSimulacion extends javax.swing.JFrame {
         jTabbedPane1.addTab("Añadir", jPanel2);
 
         jPanel1.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
-
-        metricsArea.setEditable(false);
-        metricsArea.setColumns(20);
-        metricsArea.setRows(5);
-        metricsArea.setFont(new java.awt.Font("Monospaced", 0, 14));
-        jScrollPane10.setViewportView(metricsArea);
-
-        jPanel1.add(jScrollPane10, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 20, 710, 200));
-
-        toggleChartButton.setText("Mostrar Gráfico de CPU");
-        toggleChartButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                toggleChartButtonActionPerformed(evt);
-            }
-        });
-        jPanel1.add(toggleChartButton, new org.netbeans.lib.awtextra.AbsoluteConstraints(270, 230, 200, 30));
-
-        chartContainerPanel.setLayout(new java.awt.BorderLayout());
-        jPanel1.add(chartContainerPanel, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 270, 710, 240));
-
         jTabbedPane1.addTab("Estadisticas", jPanel1);
 
         jPanel3.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
@@ -533,80 +428,85 @@ public class VistaSimulacion extends javax.swing.JFrame {
         );
 
         pack();
-    }// </editor-fold>                        
+    }// </editor-fold>//GEN-END:initComponents
 
-    private void nombreActionPerformed(java.awt.event.ActionEvent evt) {                                        
-    }                                       
+    private void nombreActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_nombreActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_nombreActionPerformed
 
-    private void duracionActionPerformed(java.awt.event.ActionEvent evt) {                                         
-    }                                        
+    private void duracionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_duracionActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_duracionActionPerformed
 
-    private void cicloexcepActionPerformed(java.awt.event.ActionEvent evt) {                                           
-    }                                          
+    private void cicloexcepActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cicloexcepActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_cicloexcepActionPerformed
 
-    private void duracionexcepActionPerformed(java.awt.event.ActionEvent evt) {                                               
-    }                                              
+    private void duracionexcepActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_duracionexcepActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_duracionexcepActionPerformed
     
-    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {                                         
+    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
         try {
-            if (cpu != null && reloj != null) {
-                cpu.start();
-                reloj.start();
+        if (cpu != null && reloj != null) {
+            cpu.start();
+            reloj.start();
 
-                ProcesoJsonHandler.writeProcesosToJson(todos, "procesos.json");
+            ProcesoJsonHandler.writeProcesosToJson(todos, "procesos.json");
 
-                this.jButton2.setEnabled(false);
-                this.guardarproceso.setEnabled(false);
+            this.jButton2.setEnabled(false);
+            this.guardarproceso.setEnabled(false);
 
-            } else {
-                javax.swing.JOptionPane.showMessageDialog(this, "Error: CPU o reloj no inicializados.");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            javax.swing.JOptionPane.showMessageDialog(this, "Error al iniciar la simulación.");
-        }
-    }                                        
-
-    private void guardarprocesoActionPerformed(java.awt.event.ActionEvent evt) {                                                   
-        if (this.validateInputs()) {
-            String nombreProceso = nombre.getText().trim();
-            int duracionnt = Integer.parseInt(duracion.getText().trim());
-            String tipo = (String) this.tipoproceso.getSelectedItem();
-            Proceso p;
-            if (this.tipoproceso.getSelectedIndex() == 0) {
-                p = new Proceso(
-                        listolista.getSize(),
-                        nombreProceso,
-                        tipo,
-                        duracionnt,
-                        0,
-                        0,
-                        0
-                );
-            } 
-            else {
-                int ciclo = Integer.parseInt(cicloexcep.getText().trim());
-                int duracionciclp = Integer.parseInt(duracionexcep.getText().trim());
-                p = new Proceso(
-                        listolista.getSize(),
-                        nombreProceso,
-                        tipo,
-                        duracionnt,
-                        ciclo,
-                        duracionciclp,
-                        0
-                );
-            }
-            listolista.appendLast(p);
-            todos.appendLast(p);
-            this.uPcbs();
-            limpiarCampos();
         } else {
-            javax.swing.JOptionPane.showMessageDialog(null, "Error en los atributos del proceso");
+            javax.swing.JOptionPane.showMessageDialog(this, "Error: CPU o reloj no inicializados.");
         }
-    }                                                  
+    } catch (Exception e) {
+        e.printStackTrace();
+        javax.swing.JOptionPane.showMessageDialog(this, "Error al iniciar la simulación.");
+    }
+    }//GEN-LAST:event_jButton2ActionPerformed
 
-    private void tipoprocesoActionPerformed(java.awt.event.ActionEvent evt) {                                            
+    private void guardarprocesoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_guardarprocesoActionPerformed
+                                         
+    if (this.validateInputs()) {
+        String nombreProceso = nombre.getText().trim();
+        int duracionnt = Integer.parseInt(duracion.getText().trim());
+        String tipo = (String) this.tipoproceso.getSelectedItem();
+        Proceso p;
+        if (this.tipoproceso.getSelectedIndex() == 0) {
+            p = new Proceso(
+                    listolista.getSize(),
+                    nombreProceso,
+                    tipo,
+                    duracionnt,
+                    0,  // ciclo excepción = 0
+                    0,  // duración excepción = 0
+                    0
+            );
+        } 
+        else {
+            int ciclo = Integer.parseInt(cicloexcep.getText().trim());
+            int duracionciclp = Integer.parseInt(duracionexcep.getText().trim());
+            p = new Proceso(
+                    listolista.getSize(),
+                    nombreProceso,
+                    tipo,
+                    duracionnt,
+                    ciclo,
+                    duracionciclp,
+                    0
+            );
+        }
+        listolista.appendLast(p);
+        todos.appendLast(p);
+        limpiarCampos();
+    } else {
+        javax.swing.JOptionPane.showMessageDialog(null, "Error en los atributos del proceso");
+    }
+    }//GEN-LAST:event_guardarprocesoActionPerformed
+
+    private void tipoprocesoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_tipoprocesoActionPerformed
+        // TODO add your handling code here:
         if(tipoproceso.getSelectedIndex() == 1){
             this.duracionexcep.setEnabled(true);
             this.cicloexcep.setEnabled(true);
@@ -614,30 +514,46 @@ public class VistaSimulacion extends javax.swing.JFrame {
             this.duracionexcep.setEnabled(false);
             this.cicloexcep.setEnabled(false);
         }
-    }                                           
+    }//GEN-LAST:event_tipoprocesoActionPerformed
 
-    private void tiempoinstruccionStateChanged(javax.swing.event.ChangeEvent evt) {                                               
+    public void setListosSuspendidos(String t) {
+        this.listosSuspendidos.setText(t);
+    }
+
+    public void setBloqueadosSuspendidos(String t) {
+        this.listos.setText(t);
+    }
+
+    private void tiempoinstruccionStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_tiempoinstruccionStateChanged
+        // TODO add your handling code here:
         this.jLabel16.setText(this.tiempoinstruccion.getValue()+" ms");
         int[] h = {this.tiempoinstruccion.getValue(),this.politica.getSelectedIndex()};
         ProcesoJsonHandler.saveToJson(h, "numbers.json");
-    }                                              
+    }//GEN-LAST:event_tiempoinstruccionStateChanged
 
-    private void politicaActionPerformed(java.awt.event.ActionEvent evt) {                                         
+    private void politicaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_politicaActionPerformed
+        // TODO add your handling code here:
         int[] h = {this.tiempoinstruccion.getValue(),this.politica.getSelectedIndex()};
         ProcesoJsonHandler.saveToJson(h, "numbers.json");
-    }                                        
+    }//GEN-LAST:event_politicaActionPerformed
 
-    private void pcbsCaretUpdate(javax.swing.event.CaretEvent evt) {                                 
-    }                                
+    private void pcbsCaretUpdate(javax.swing.event.CaretEvent evt) {//GEN-FIRST:event_pcbsCaretUpdate
+        // TODO add your handling code here:
+    }//GEN-LAST:event_pcbsCaretUpdate
 
-    private void politicaItemStateChanged(java.awt.event.ItemEvent evt) {                                          
-    }                                         
+    private void politicaItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_politicaItemStateChanged
+        // TODO add your handling code here:
+    }//GEN-LAST:event_politicaItemStateChanged
 
-    private void toggleChartButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                  
-        toggleChart();
-    }                                                 
-
+    /**
+     * @param args the command line arguments
+     */
     public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         */
         try {
             for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
                 if ("Nimbus".equals(info.getName())) {
@@ -646,27 +562,28 @@ public class VistaSimulacion extends javax.swing.JFrame {
                 }
             }
         } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(VistaSimulacion.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(VistaSimulacion2.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(VistaSimulacion.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(VistaSimulacion2.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(VistaSimulacion.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(VistaSimulacion2.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(VistaSimulacion.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(VistaSimulacion2.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
+        //</editor-fold>
+        //</editor-fold>
 
+        /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                new VistaSimulacion().setVisible(true);
+                new VistaSimulacion2().setVisible(true);
             }
         });
     }
 
-    // Variables declaration - do not modify                     
+    // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextArea bloqueados;
     private javax.swing.JTextArea bloqueadosSuspendidos;
-    private javax.swing.JPanel chartprivate;
-    javax.swing.JPanel chartContainerPanel;
     private javax.swing.JTextField cicloexcep;
     private javax.swing.JTextArea cpu1;
     private javax.swing.JTextField duracion;
@@ -694,7 +611,6 @@ public class VistaSimulacion extends javax.swing.JFrame {
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
     private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JScrollPane jScrollPane10;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane4;
     private javax.swing.JScrollPane jScrollPane6;
@@ -704,7 +620,6 @@ public class VistaSimulacion extends javax.swing.JFrame {
     private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JTextArea listos;
     private javax.swing.JTextArea listosSuspendidos;
-    private javax.swing.JTextArea metricsArea;
     private javax.swing.JTextField nombre;
     private javax.swing.JTextArea pcbs;
     private javax.swing.JComboBox<String> politica;
@@ -712,6 +627,5 @@ public class VistaSimulacion extends javax.swing.JFrame {
     private javax.swing.JTextArea salida;
     private javax.swing.JSlider tiempoinstruccion;
     private javax.swing.JComboBox<String> tipoproceso;
-    private javax.swing.JButton toggleChartButton;
-    // End of variables declaration                   
+    // End of variables declaration//GEN-END:variables
 }

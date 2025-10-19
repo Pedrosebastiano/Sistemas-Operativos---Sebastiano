@@ -1,8 +1,5 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package modelos;
+
 import static java.lang.Thread.sleep;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
@@ -21,14 +18,16 @@ public class CPU extends Thread {
     private Semaphore mutexInterruciones;
     private Semaphore mutexCPUs;
     private ControladorSimulacion controlador;
+    private PerformanceMetrics metrics;
 
-    public CPU(ControladorSimulacion controlador, Planificador planner, int id, Semaphore mutexCPUs) {
+    public CPU(ControladorSimulacion controlador, Planificador planner, int id, Semaphore mutexCPUs, PerformanceMetrics metrics) {
         this.controlador = controlador;
         this.planificador = planner;
         this.id = id;
         this.mutexCPUs = mutexCPUs;
         this.mutexInterruciones = new Semaphore(1);
         this.interruptionsList = new List();
+        this.metrics = metrics;
     }  
 
     public int getQuantum() {
@@ -120,20 +119,22 @@ public class CPU extends Thread {
                     this.usarPlanificador("Listo");
                     this.obtenerProceso();
                 }else if(planificador.getSelectedAlgorithm() == 3 && this.checkSRT() && planificador.getReadyList().isEmpty()){
-                        this.controlador.setCPUText(id,"Planificador");
-                        for (int i = 0; i < 4; i++) {
+                    this.controlador.setCPUText(id,"Planificador");
+                    for (int i = 0; i < 4; i++) {
                         try {
                             sleep(controlador.getTiempo());
                         } catch (InterruptedException ex) {
                             Logger.getLogger(CPU.class.getName()).log(Level.SEVERE, null, ex);
                         }
                         controlador.updateDataset(id, "Sistema Operativo");
-                        
-                        }
-                        this.actulizarCPUvista();                    
+                        metrics.incrementSystemTime();
+                    }
+                    this.actulizarCPUvista();                    
                 }else{
                     if(this.currentProcess.getInstrucciones() < this.memoryAddressRegister){
-                        this.usarPlanificador("Salida");
+                        currentProcess.setTiempoFinalizacion(controlador.getRelojGlobal());
+                        metrics.recordProcessCompletion(currentProcess);
+                        this.usarPlanificador("Terminado");
                         this.obtenerProceso();
                     }else{
                         try {
@@ -141,27 +142,35 @@ public class CPU extends Thread {
                         } catch (InterruptedException ex) {
                             Logger.getLogger(Interrupcion.class.getName()).log(Level.SEVERE, null, ex);
                         }
+                        
+                        if(currentProcess.isPrimerEjecucion()){
+                            currentProcess.setTiempoInicio(controlador.getRelojGlobal());
+                            currentProcess.setTiempoRespuesta(currentProcess.getTiempoInicio());
+                            currentProcess.setPrimerEjecucion(false);
+                        }
+                        
                         this.actulizarCPUvista();
                         controlador.updateDataset(id, "Usuario");
+                        metrics.incrementCpuTime();
                         quantum--;
-                        //checkear si hay que crear interrupción
+                        
                         if(this.isInterruption(memoryAddressRegister)&& "I/O Bound".equals(this.currentProcess.getTipo())){
                             System.out.println("Interrupcion");
                             this.usarPlanificador("Bloqueado");
                             this.obtenerProceso();
                         }else{
-
                             programCounter++;
                             this.memoryAddressRegister++;
                             this.actulizarCPUvista();
                         }    
                     }
                 }
+            }
         }
     }
-    }
+    
     public boolean isInterruption (int mar){
-        if(mar%currentProcess.getCiclosParaExcepcion()==0){
+        if(mar%currentProcess.getCiclosParaExcepcion()==0 && currentProcess.getCiclosParaExcepcion() > 0){
             Interrupcion exception = new Interrupcion(id,currentProcess.getCiclosParaSatisfacerExcepcion(),this.controlador,this.currentProcess.getId(),this.interruptionsList,this.mutexInterruciones);
             exception.start();
             return true;
@@ -170,70 +179,69 @@ public class CPU extends Thread {
     }
     
     private void interruptHandler(Interrupcion exception){
-
         try {
-                mutexCPUs.acquire();
-            } catch (InterruptedException ex) {
-                Logger.getLogger(Interrupcion.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            this.planificador.updateBlockToReady(exception.getProcessId());
-            mutexCPUs.release();
+            mutexCPUs.acquire();
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Interrupcion.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        this.planificador.updateBlockToReady(exception.getProcessId());
+        mutexCPUs.release();
     }
     
     private void usarPlanificador(String state){
         try {
-
             mutexCPUs.acquire();
         } catch (InterruptedException ex) {
             Logger.getLogger(CPU.class.getName()).log(Level.SEVERE, null, ex);
         }
 
         if(quantum != 5){
-            if("Listo".equals(state) && currentProcess.getEstado().startsWith("Suspendido")){
+            if("Listo".equals(state) && currentProcess.debeSuspenderse()){
                 this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister, "Suspendido-Listo");
-            } else if("Bloqueado".equals(state) && currentProcess.getEstado().startsWith("Suspendido")){
+            } else if("Bloqueado".equals(state) && currentProcess.debeSuspenderse()){
                 this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister, "Suspendido-Bloqueado");
             } else {
                 this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister, state);
             }
         }else{
-            if("Listo".equals(state) && currentProcess.getEstado().startsWith("Suspendido")){
+            if("Listo".equals(state) && currentProcess.debeSuspenderse()){
                 this.planificador.updatePCB(currentProcess, "Suspendido-Listo");
-            } else if("Bloqueado".equals(state) && currentProcess.getEstado().startsWith("Suspendido")){
+            } else if("Bloqueado".equals(state) && currentProcess.debeSuspenderse()){
                 this.planificador.updatePCB(currentProcess, "Suspendido-Bloqueado");
             } else {
                 this.planificador.updatePCB(currentProcess, state);
             }
         }
 
-       mutexCPUs.release();
+        mutexCPUs.release();
     }
+    
     private boolean checkSRT(){
         try {
-            //Aqui va un semaforo
-                mutexCPUs.acquire();
-            } catch (InterruptedException ex) {
-                Logger.getLogger(Interrupcion.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            boolean output = this.planificador.ifSRT(currentProcess);
-            if(output){
-                if(quantum != 5){
-                    if(currentProcess.getEstado().startsWith("Suspendido")){
-                        this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister, "Suspendido-Listo");
+            mutexCPUs.acquire();
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Interrupcion.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        boolean output = this.planificador.ifSRT(currentProcess);
+        if(output){
+            if(quantum != 5){
+                if(currentProcess.debeSuspenderse()){
+                    this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister, "Suspendido-Listo");
                     } else {
-                        this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister,"Listo");
-                    }
-                }else{
-                    if(currentProcess.getEstado().startsWith("Suspendido")){
-                        this.planificador.updatePCB(currentProcess,"Suspendido-Listo");
-                    } else {
-                        this.planificador.updatePCB(currentProcess,"Listo");
-                    }
+                    this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister,"Listo");
+                }
+            }else{
+                if(currentProcess.debeSuspenderse()){
+                    this.planificador.updatePCB(currentProcess,"Suspendido-Listo");
+                } else {
+                    this.planificador.updatePCB(currentProcess,"Listo");
                 }
             }
-            mutexCPUs.release();
-            return output;
+        }
+        mutexCPUs.release();
+        return output;
     }
+    
     private void actulizarCPUvista(){
         String display = "Id: " + currentProcess.getId() + 
                 "\nNombre: " + currentProcess.getNombre() +
@@ -242,22 +250,22 @@ public class CPU extends Thread {
                 "\nMAR: " + this.memoryAddressRegister ;
         this.controlador.setCPUText(id,display );
     }
+    
     private void obtenerProceso(){
-        //esto es para nada mas que no explote el thread cuando no haya mas proceso
         currentProcess = null;
         while(currentProcess==null){
             this.controlador.setCPUText(id,"Planificador");
             for (int i = 0; i < 4; i++) {
-            try {
-                sleep(controlador.getTiempo());
-            } catch (InterruptedException ex) {
-                Logger.getLogger(CPU.class.getName()).log(Level.SEVERE, null, ex);
+                try {
+                    sleep(controlador.getTiempo());
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(CPU.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                controlador.updateDataset(id, "Sistema Operativo");
+                metrics.incrementSystemTime();
             }
-            controlador.updateDataset(id, "Sistema Operativo");
-            }
             try {
-                //Aqui va un semaforo
-                    mutexCPUs.acquire();
+                mutexCPUs.acquire();
             } catch (InterruptedException ex) {
                 Logger.getLogger(Interrupcion.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -271,18 +279,17 @@ public class CPU extends Thread {
                 Logger.getLogger(CPU.class.getName()).log(Level.SEVERE, null, ex);
             }
             controlador.updateDataset( id, "Sistema Operativo");
+            metrics.incrementSystemTime();
             if(this.interruptionsList.isEmpty()){
                 Interrupcion exception = (Interrupcion) interruptionsList.getHead().getValue();
                 interruptionsList.delete(interruptionsList.getHead());
                 this.interruptHandler(exception);
             }
         }
-        //
+        
         quantum = 5;
         programCounter = currentProcess.getPc()+1;
         memoryAddressRegister = currentProcess.getPc();
         this.actulizarCPUvista();
-
-        }
-    
+    }
 }

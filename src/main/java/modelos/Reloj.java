@@ -12,7 +12,7 @@ public class Reloj extends Thread {
     private Planificador planificador;
     private int ciclo;
     
-    public Reloj(Semaphore mutex,Planificador dispatcher, ControladorSimulacion controlador) {
+    public Reloj(Semaphore mutex, Planificador dispatcher, ControladorSimulacion controlador) {
         this.mutex = mutex;
         this.ciclo = 0;
         this.planificador = dispatcher;
@@ -66,5 +66,4 @@ public class Reloj extends Thread {
             controlador.actulizarCiclo(ciclo);
         }
     }
-    
 }
