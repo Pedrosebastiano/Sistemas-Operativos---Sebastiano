@@ -138,9 +138,9 @@ public class Planificador {
                 readyList = sortByHRR(readyList);
                 logger.logEvent("Cambio de algoritmo a HRRN");
                 break;
-            case 5: // FB
-                readyList = sortByFeedback(readyList);
-                logger.logEvent("Cambio de algoritmo a Feedback");
+            case 5: // Priority-based
+                readyList = sortByPriority(readyList);
+                logger.logEvent("Cambio de algoritmo a Prioridad");
                 break;
         }
     }
@@ -164,10 +164,11 @@ public class Planificador {
         return bubbleSort(list, (p1, p2) -> Double.compare(getHRR((Proceso) p2), getHRR((Proceso) p1)));
     }
 
-    private List sortByFeedback(List list) {
+    private List sortByPriority(List list) {
+        // Lower priority number = higher priority (0 is highest)
         return bubbleSort(list, (p1, p2) -> Integer.compare(
-            ((Proceso) p2).getTiempoEspera(),
-            ((Proceso) p1).getTiempoEspera()
+            ((Proceso) p1).getPrioridad(),
+            ((Proceso) p2).getPrioridad()
         ));
     }
 
@@ -199,11 +200,15 @@ public class Planificador {
     }
 
     public boolean ifSRT(Proceso process){
-        if(controlador.getPolitica() == 3){
+        if(controlador.getPolitica() == 3 && this.readyList.isEmpty()){
+            int currentRemainingTime = process.getInstrucciones() - process.getMar();
+            
             Nodo current = this.readyList.getHead();
             while (current != null) {
-                if (((Proceso) current.getValue()).getInstrucciones() - ((Proceso) current.getValue()).getMar() < 
-                        process.getInstrucciones()- process.getMar()) {
+                Proceso readyProcess = (Proceso) current.getValue();
+                int readyRemainingTime = readyProcess.getInstrucciones() - readyProcess.getMar();
+                
+                if (readyRemainingTime < currentRemainingTime) {
                     return true;
                 }
                 current = current.getpNext();
@@ -420,6 +425,7 @@ public class Planificador {
                 "\n PC: " + currentProcess.getPc() + 
                 "\n MAR: " + currentProcess.getMar() +
                 "\n Espera: " + currentProcess.getTiempoEspera() +
+                "\n Prioridad: " + currentProcess.getPrioridad() +
                 "\n Memoria: " + currentProcess.getMemoriaRequerida();
         return display;
     }

@@ -120,6 +120,7 @@ public class VistaSimulacion extends javax.swing.JFrame {
         cicloexcep.setText("");
         duracionexcep.setText("");
         tipoproceso.setSelectedIndex(0);
+        prioridadField.setText("");
     }
 
     public void setCPU(String t){
@@ -270,36 +271,38 @@ public class VistaSimulacion extends javax.swing.JFrame {
     }
     
     private void generarProcesosAleatorios() {
-    Random rand = new Random();
+        Random rand = new Random();
 
-    for (int i = 0; i < 10; i++) {
-        int id = todos.getSize(); // obtiene el ID actual
-        String nombreProceso = "Proceso " + id; // nombre dinámico
+        for (int i = 0; i < 10; i++) {
+            int id = todos.getSize();
+            String nombreProceso = "Proceso " + id;
 
-        int instrucciones = 20 + rand.nextInt(180); // 20-200 instrucciones
-        boolean isIOBound = rand.nextBoolean();
-        String tipo = isIOBound ? "I/O Bound" : "CPU Bound";
+            int instrucciones = 20 + rand.nextInt(180); // 20-200 instructions
+            boolean isIOBound = rand.nextBoolean();
+            String tipo = isIOBound ? "I/O Bound" : "CPU Bound";
 
-        int ciclosExcepcion = isIOBound ? (5 + rand.nextInt(20)) : 1;
-        int duracionExcepcion = isIOBound ? (3 + rand.nextInt(10)) : 1;
+            int ciclosExcepcion = isIOBound ? (5 + rand.nextInt(20)) : 1;
+            int duracionExcepcion = isIOBound ? (3 + rand.nextInt(10)) : 1;
+            
+            // Random priority between 0 (highest) and 4 (lowest)
+            int prioridad = rand.nextInt(5);
 
-        Proceso p = new Proceso(
-            id,
-            nombreProceso,
-            tipo,
-            instrucciones,
-            ciclosExcepcion,
-            duracionExcepcion,
-            0
-        );
+            Proceso p = new Proceso(
+                id,
+                nombreProceso,
+                tipo,
+                instrucciones,
+                ciclosExcepcion,
+                duracionExcepcion,
+                prioridad
+            );
 
-        listolista.appendLast(p);
-        todos.appendLast(p);
+            listolista.appendLast(p);
+            todos.appendLast(p);
+        }
+
+        this.uPcbs();
     }
-
-    this.uPcbs();
-}
-
 
     // <editor-fold defaultstate="collapsed" desc="Generated Code">                          
     private void initComponents() {
@@ -318,6 +321,8 @@ public class VistaSimulacion extends javax.swing.JFrame {
         tipoproceso = new javax.swing.JComboBox<>();
         jLabel13 = new javax.swing.JLabel();
         generarAleatoriosBtn = new javax.swing.JButton();
+        jLabel14 = new javax.swing.JLabel();
+        prioridadField = new javax.swing.JTextField();
         jPanel1 = new javax.swing.JPanel();
         jScrollPane10 = new javax.swing.JScrollPane();
         metricsArea = new javax.swing.JTextArea();
@@ -369,7 +374,7 @@ public class VistaSimulacion extends javax.swing.JFrame {
                 guardarprocesoActionPerformed(evt);
             }
         });
-        jPanel2.add(guardarproceso, new org.netbeans.lib.awtextra.AbsoluteConstraints(250, 300, 140, 30));
+        jPanel2.add(guardarproceso, new org.netbeans.lib.awtextra.AbsoluteConstraints(250, 340, 140, 30));
 
         nombre.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -428,7 +433,13 @@ public class VistaSimulacion extends javax.swing.JFrame {
                 generarAleatoriosBtnActionPerformed(evt);
             }
         });
-        jPanel2.add(generarAleatoriosBtn, new org.netbeans.lib.awtextra.AbsoluteConstraints(400, 300, 200, 30));
+        jPanel2.add(generarAleatoriosBtn, new org.netbeans.lib.awtextra.AbsoluteConstraints(400, 340, 200, 30));
+
+        jLabel14.setText("Prioridad (0-4):");
+        jPanel2.add(jLabel14, new org.netbeans.lib.awtextra.AbsoluteConstraints(230, 290, -1, -1));
+
+        prioridadField.setText("0");
+        jPanel2.add(prioridadField, new org.netbeans.lib.awtextra.AbsoluteConstraints(320, 290, 280, -1));
 
         jTabbedPane1.addTab("Añadir", jPanel2);
 
@@ -473,7 +484,7 @@ public class VistaSimulacion extends javax.swing.JFrame {
         jLabel16.setText("5000 ms");
         jPanel3.add(jLabel16, new org.netbeans.lib.awtextra.AbsoluteConstraints(400, 190, 110, -1));
 
-        politica.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "FIFO", "RR", "SPN", "SRT", "HRRN", "FB" }));
+        politica.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "FIFO", "RR", "SPN", "SRT", "HRRN", "Prioridad" }));
         politica.addItemListener(new java.awt.event.ItemListener() {
             public void itemStateChanged(java.awt.event.ItemEvent evt) {
                 politicaItemStateChanged(evt);
@@ -660,6 +671,19 @@ public class VistaSimulacion extends javax.swing.JFrame {
             String nombreProceso = nombre.getText().trim();
             int duracionnt = Integer.parseInt(duracion.getText().trim());
             String tipo = (String) this.tipoproceso.getSelectedItem();
+            
+            int prioridad = 0;
+            try {
+                prioridad = Integer.parseInt(prioridadField.getText().trim());
+                if (prioridad < 0 || prioridad > 4) {
+                    javax.swing.JOptionPane.showMessageDialog(null, "La prioridad debe estar entre 0 y 4");
+                    return;
+                }
+            } catch (NumberFormatException e) {
+                javax.swing.JOptionPane.showMessageDialog(null, "Prioridad inválida");
+                return;
+            }
+            
             Proceso p;
             if (this.tipoproceso.getSelectedIndex() == 0) {
                 p = new Proceso(
@@ -669,7 +693,7 @@ public class VistaSimulacion extends javax.swing.JFrame {
                         duracionnt,
                         1,
                         1,
-                        0
+                        prioridad
                 );
             } 
             else {
@@ -682,7 +706,7 @@ public class VistaSimulacion extends javax.swing.JFrame {
                         duracionnt,
                         ciclo,
                         duracionciclp,
-                        0
+                        prioridad
                 );
             }
             listolista.appendLast(p);
@@ -779,6 +803,7 @@ public class VistaSimulacion extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel11;
     private javax.swing.JLabel jLabel12;
     private javax.swing.JLabel jLabel13;
+    private javax.swing.JLabel jLabel14;
     private javax.swing.JLabel jLabel15;
     private javax.swing.JLabel jLabel16;
     private javax.swing.JLabel jLabel17;
@@ -811,6 +836,7 @@ public class VistaSimulacion extends javax.swing.JFrame {
     private javax.swing.JTextField nombre;
     private javax.swing.JTextArea pcbs;
     private javax.swing.JComboBox<String> politica;
+    private javax.swing.JTextField prioridadField;
     private javax.swing.JTextField relojglobal;
     private javax.swing.JTextArea salida;
     private javax.swing.JSlider tiempoinstruccion;

@@ -119,17 +119,9 @@ public class CPU extends Thread {
                     this.usarPlanificador("Listo");
                     this.obtenerProceso();
                 }else if(planificador.getSelectedAlgorithm() == 3 && this.checkSRT() && planificador.getReadyList().isEmpty()){
-                    this.controlador.setCPUText(id,"Planificador");
-                    for (int i = 0; i < 4; i++) {
-                        try {
-                            sleep(controlador.getTiempo());
-                        } catch (InterruptedException ex) {
-                            Logger.getLogger(CPU.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-                        controlador.updateDataset(id, "Sistema Operativo");
-                        metrics.incrementSystemTime();
-                    }
-                    this.actulizarCPUvista();                    
+                    // SRT preemption - save current process and get new one
+                    this.usarPlanificador("Listo");
+                    this.obtenerProceso();
                 }else{
                     if(this.currentProcess.getInstrucciones() < this.memoryAddressRegister){
                         currentProcess.setTiempoFinalizacion(controlador.getRelojGlobal());
@@ -209,14 +201,9 @@ public class CPU extends Thread {
         } catch (InterruptedException ex) {
             Logger.getLogger(Interrupcion.class.getName()).log(Level.SEVERE, null, ex);
         }
+        
         boolean output = this.planificador.ifSRT(currentProcess);
-        if(output){
-            if(quantum != 5){
-                this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister,"Listo");
-            }else{
-                this.planificador.updatePCB(currentProcess,"Listo");
-            }
-        }
+        
         mutexCPUs.release();
         return output;
     }
