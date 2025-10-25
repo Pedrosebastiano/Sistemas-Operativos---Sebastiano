@@ -72,4 +72,8 @@ public class ControladorSimulacion {
     public void updateMetrics(String metrics) {
         vista.updateMetrics(metrics);
     }
+    
+    public void updateEventLog(String log) {
+        vista.updateEventLog(log);
+    }
 }

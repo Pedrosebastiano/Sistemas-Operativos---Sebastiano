@@ -19,11 +19,13 @@ public class Proceso {
     private int tiempoInicio;
     private int tiempoFinalizacion;
     private boolean primerEjecucion;
+    private int memoriaRequerida; // NEW: Memory usage attribute
 
     public Proceso() {
         this.primerEjecucion = true;
         this.tiempoInicio = -1;
         this.tiempoFinalizacion = -1;
+        this.memoriaRequerida = 0;
     }
 
     @JsonCreator
@@ -49,6 +51,20 @@ public class Proceso {
         this.tiempoInicio = -1;
         this.tiempoFinalizacion = -1;
         this.tiempoRespuesta = 0;
+        this.memoriaRequerida = calcularMemoriaRequerida(instrucciones);
+    }
+
+    private int calcularMemoriaRequerida(int instrucciones) {
+        // Base memory + proportional to instructions (e.g., 10 + 0.5 per instruction)
+        return 10 + (instrucciones / 2);
+    }
+
+    public int getMemoriaRequerida() {
+        return memoriaRequerida;
+    }
+
+    public void setMemoriaRequerida(int memoriaRequerida) {
+        this.memoriaRequerida = memoriaRequerida;
     }
 
     public int getTiempoRespuesta() {
@@ -181,8 +197,8 @@ public class Proceso {
         }
     }
 
-    public boolean debeSuspenderse() {
-        return this.instrucciones > 120;
+    public boolean debeSuspenderse(int memoriaDisponible) {
+        return this.memoriaRequerida > memoriaDisponible;
     }
 
     public void suspender() {
@@ -209,6 +225,7 @@ public class Proceso {
                 ", tipo='" + tipo + '\'' +
                 ", estado='" + estado + '\'' +
                 ", instrucciones=" + instrucciones +
+                ", memoria=" + memoriaRequerida +
                 '}';
     }
 }

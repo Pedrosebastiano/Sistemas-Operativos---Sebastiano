@@ -14,6 +14,7 @@ public class Planificador {
     private ControladorSimulacion controlador;
     private EventLogger logger;
     public int selectedAlgorithm;
+    private MemoryManager memoryManager;
 
     public Planificador(List readyList, List blockedList, List exitList, List allProcess, 
                        List suspReadyList, List suspBlockList, ControladorSimulacion controlador) {
@@ -25,6 +26,7 @@ public class Planificador {
         this.suspendedReadyList = suspReadyList;
         this.suspendedBlockedList = suspBlockList;
         this.logger = new EventLogger();
+        this.memoryManager = new MemoryManager();
     }
 
     public int getSelectedAlgorithm() {
@@ -39,8 +41,20 @@ public class Planificador {
         this.selectedAlgorithm = selectedAlgorithm;
     }
     
+    public EventLogger getLogger() {
+        return logger;
+    }
+
+    public MemoryManager getMemoryManager() {
+        return memoryManager;
+    }
+    
     public Proceso getProcess(){
         Proceso output = null;
+        
+        // Try to reactivate suspended processes if memory is available
+        tryReactivateSuspendedProcesses();
+        
         if(this.readyList.isEmpty()){
             if(selectedAlgorithm != controlador.getPolitica()){
                 selectedAlgorithm = controlador.getPolitica();
@@ -52,16 +66,54 @@ public class Planificador {
             output = (Proceso) pAux.getValue();
             output.setEstado("Ejecucion");
             
-            logger.logEvent("Procesador selecciona Proceso " + output.getNombre() + " (ID: " + output.getId() + ")");
+            // Allocate memory for the process
+            if (!memoryManager.allocate(output.getMemoriaRequerida())) {
+                logger.logEvent("ADVERTENCIA: No se pudo asignar memoria para Proceso " + 
+                               output.getNombre() + " (ID: " + output.getId() + ")");
+            }
+            
+            logger.logEvent("Procesador selecciona Proceso " + output.getNombre() + 
+                          " (ID: " + output.getId() + ")");
         }
         
         this.updateReadyList();
         this.updateProcessList();
         
-        if(output == null){
-            System.out.println("process null");
-        }
         return output;    
+    }
+
+    private void tryReactivateSuspendedProcesses() {
+        // Try to reactivate suspended-ready processes
+        Nodo current = suspendedReadyList.getHead();
+        while (current != null) {
+            Proceso p = (Proceso) current.getValue();
+            Nodo next = current.getpNext();
+            
+            if (memoryManager.canAllocate(p.getMemoriaRequerida())) {
+                suspendedReadyList.delete(current);
+                p.reactivar();
+                readyList.appendLast(p);
+                logger.logEvent("Proceso " + p.getNombre() + " (ID: " + p.getId() + 
+                              ") reactivado de Suspendido-Listo");
+            }
+            current = next;
+        }
+
+        // Try to reactivate suspended-blocked processes
+        current = suspendedBlockedList.getHead();
+        while (current != null) {
+            Proceso p = (Proceso) current.getValue();
+            Nodo next = current.getpNext();
+            
+            if (memoryManager.canAllocate(p.getMemoriaRequerida())) {
+                suspendedBlockedList.delete(current);
+                p.reactivar();
+                blockedList.appendLast(p);
+                logger.logEvent("Proceso " + p.getNombre() + " (ID: " + p.getId() + 
+                              ") reactivado de Suspendido-Bloqueado");
+            }
+            current = next;
+        }
     }
     
     private void sortReadyQueue(int schedulingAlgorithm) {
@@ -166,60 +218,62 @@ public class Planificador {
         process.setMar(memoryAddressRegister);
         process.setTiempoEspera(0);
 
-        switch (state) {
-            case "Bloqueado":
-                blockedList.appendLast(process);
-                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") entra en estado de bloqueo");
-                break;
-            case "Listo":
-                readyList.appendLast(process);
-                break;
-            case "Suspendido-Listo":
-                suspendedReadyList.appendLast(process);
-                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") suspendido (Listo)");
-                break;
-            case "Suspendido-Bloqueado":
-                suspendedBlockedList.appendLast(process);
-                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") suspendido (Bloqueado)");
-                break;
-            case "Terminado":
-                exitList.appendLast(process);
-                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") TERMINADO");
-                break;
-            default:
-                exitList.appendLast(process);
-                break;
-        }
-
-        updateAllLists();
+        handleStateTransition(process, state);
     }
 
     public void updatePCB(Proceso process, String state) {
         process.setEstado(state);
         process.setTiempoEspera(0);
 
+        handleStateTransition(process, state);
+    }
+
+    private void handleStateTransition(Proceso process, String state) {
         switch (state) {
             case "Bloqueado":
-                blockedList.appendLast(process);
-                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") entra en estado de bloqueo");
+                if (process.debeSuspenderse(memoryManager.getAvailableMemory())) {
+                    process.suspender();
+                    suspendedBlockedList.appendLast(process);
+                    memoryManager.deallocate(process.getMemoriaRequerida());
+                    logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + 
+                                  ") suspendido (Bloqueado) por falta de memoria");
+                } else {
+                    blockedList.appendLast(process);
+                    logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + 
+                                  ") entra en estado de bloqueo por operación I/O");
+                }
                 break;
             case "Listo":
-                readyList.appendLast(process);
+                if (process.debeSuspenderse(memoryManager.getAvailableMemory())) {
+                    process.suspender();
+                    suspendedReadyList.appendLast(process);
+                    memoryManager.deallocate(process.getMemoriaRequerida());
+                    logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + 
+                                  ") suspendido (Listo) por falta de memoria");
+                } else {
+                    readyList.appendLast(process);
+                }
                 break;
             case "Suspendido-Listo":
                 suspendedReadyList.appendLast(process);
-                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") suspendido (Listo)");
+                memoryManager.deallocate(process.getMemoriaRequerida());
+                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + 
+                              ") suspendido (Listo)");
                 break;
             case "Suspendido-Bloqueado":
                 suspendedBlockedList.appendLast(process);
-                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") suspendido (Bloqueado)");
+                memoryManager.deallocate(process.getMemoriaRequerida());
+                logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + 
+                              ") suspendido (Bloqueado)");
                 break;
             case "Terminado":
                 exitList.appendLast(process);
+                memoryManager.deallocate(process.getMemoriaRequerida());
                 logger.logEvent("Proceso " + process.getNombre() + " (ID: " + process.getId() + ") TERMINADO");
                 break;
             default:
                 exitList.appendLast(process);
+                memoryManager.deallocate(process.getMemoriaRequerida());
                 break;
         }
 
@@ -243,7 +297,8 @@ public class Planificador {
             Proceso p = (Proceso) pAux.getValue();
             displayReady.append("\n ----------------------------------\n ")
                 .append("ID: ").append(p.getId())
-                .append("\n Nombre: ").append(p.getNombre());
+                .append("\n Nombre: ").append(p.getNombre())
+                .append("\n Memoria: ").append(p.getMemoriaRequerida());
             pAux = pAux.getpNext();
         }
 
@@ -252,7 +307,8 @@ public class Planificador {
             Proceso p = (Proceso) pAux.getValue();
             displayBlocked.append("\n ----------------------------------\n ")
                 .append("ID: ").append(p.getId())
-                .append("\n Nombre: ").append(p.getNombre());
+                .append("\n Nombre: ").append(p.getNombre())
+                .append("\n Memoria: ").append(p.getMemoriaRequerida());
             pAux = pAux.getpNext();
         }
 
@@ -280,11 +336,20 @@ public class Planificador {
         Nodo pAux = this.blockedList.getHead();
         while(pAux!=null){
             if(id== ((Proceso)pAux.getValue()).getId()){
-                ((Proceso)pAux.getValue()).setEstado("Listo");
-                ((Proceso)pAux.getValue()).setTiempoEspera(0);
+                Proceso p = (Proceso)pAux.getValue();
+                p.setEstado("Listo");
+                p.setTiempoEspera(0);
                 blockedList.delete(pAux);
-                readyList.appendLast(pAux);
-                logger.logEvent("Proceso (ID: " + id + ") sale de bloqueo y entra a cola de listos");
+                
+                if (p.debeSuspenderse(memoryManager.getAvailableMemory())) {
+                    p.suspender();
+                    suspendedReadyList.appendLast(pAux);
+                    memoryManager.deallocate(p.getMemoriaRequerida());
+                    logger.logEvent("Proceso (ID: " + id + ") sale de bloqueo pero es suspendido por falta de memoria");
+                } else {
+                    readyList.appendLast(pAux);
+                    logger.logEvent("Proceso (ID: " + id + ") sale de bloqueo (operación I/O completada) y entra a cola de listos");
+                }
                 break;                
             }
             pAux = pAux.getpNext();
@@ -354,11 +419,8 @@ public class Planificador {
                 "\n Nombre: " + currentProcess.getNombre() +
                 "\n PC: " + currentProcess.getPc() + 
                 "\n MAR: " + currentProcess.getMar() +
-                "\n Espera: " + currentProcess.getTiempoEspera();
+                "\n Espera: " + currentProcess.getTiempoEspera() +
+                "\n Memoria: " + currentProcess.getMemoriaRequerida();
         return display;
-    }
-    
-    public EventLogger getLogger() {
-        return logger;
     }
 }

@@ -155,7 +155,6 @@ public class CPU extends Thread {
                         quantum--;
                         
                         if(this.isInterruption(memoryAddressRegister)&& "I/O Bound".equals(this.currentProcess.getTipo())){
-                            System.out.println("Interrupcion");
                             this.usarPlanificador("Bloqueado");
                             this.obtenerProceso();
                         }else{
@@ -196,21 +195,9 @@ public class CPU extends Thread {
         }
 
         if(quantum != 5){
-            if("Listo".equals(state) && currentProcess.debeSuspenderse()){
-                this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister, "Suspendido-Listo");
-            } else if("Bloqueado".equals(state) && currentProcess.debeSuspenderse()){
-                this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister, "Suspendido-Bloqueado");
-            } else {
-                this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister, state);
-            }
+            this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister, state);
         }else{
-            if("Listo".equals(state) && currentProcess.debeSuspenderse()){
-                this.planificador.updatePCB(currentProcess, "Suspendido-Listo");
-            } else if("Bloqueado".equals(state) && currentProcess.debeSuspenderse()){
-                this.planificador.updatePCB(currentProcess, "Suspendido-Bloqueado");
-            } else {
-                this.planificador.updatePCB(currentProcess, state);
-            }
+            this.planificador.updatePCB(currentProcess, state);
         }
 
         mutexCPUs.release();
@@ -225,17 +212,9 @@ public class CPU extends Thread {
         boolean output = this.planificador.ifSRT(currentProcess);
         if(output){
             if(quantum != 5){
-                if(currentProcess.debeSuspenderse()){
-                    this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister, "Suspendido-Listo");
-                    } else {
-                    this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister,"Listo");
-                }
+                this.planificador.updatePCB(currentProcess, programCounter, memoryAddressRegister,"Listo");
             }else{
-                if(currentProcess.debeSuspenderse()){
-                    this.planificador.updatePCB(currentProcess,"Suspendido-Listo");
-                } else {
-                    this.planificador.updatePCB(currentProcess,"Listo");
-                }
+                this.planificador.updatePCB(currentProcess,"Listo");
             }
         }
         mutexCPUs.release();

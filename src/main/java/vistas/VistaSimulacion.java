@@ -1,7 +1,6 @@
 package vistas;
 
 import java.awt.BorderLayout;
-import java.awt.CardLayout;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -12,6 +11,7 @@ import java.awt.Dimension;
 import org.jfree.chart.plot.PiePlot;
 import micelaneos.*;
 import modelos.*;
+import java.util.Random;
 
 public class VistaSimulacion extends javax.swing.JFrame {
     DefaultPieDataset dataset1;
@@ -29,7 +29,6 @@ public class VistaSimulacion extends javax.swing.JFrame {
         initComponents();
         dataset1 = new DefaultPieDataset();
         
-        // Inicializar el gráfico pero no mostrarlo aún
         chartPanel = createPieChart(dataset1, "Utilización del CPU");
         chartPanel.setPreferredSize(new Dimension(700, 400));
         
@@ -44,13 +43,16 @@ public class VistaSimulacion extends javax.swing.JFrame {
         this.relojGlobal = 0;
         this.uPcbs();
         
-        // Thread para actualizar métricas cada 2 segundos
+        // Thread to update metrics and event log
         new Thread(() -> {
             while (true) {
                 try {
                     Thread.sleep(2000);
                     if (metrics != null) {
                         updateMetricsDisplay();
+                    }
+                    if (planificador != null) {
+                        updateEventLogDisplay();
                     }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -129,9 +131,8 @@ public class VistaSimulacion extends javax.swing.JFrame {
         Nodo p = todos.getHead();
         while(p != null){
            if (planificador != null) {
-    d += planificador.stringInterfaz((Proceso) p.getValue());
-}
-
+                d += planificador.stringInterfaz((Proceso) p.getValue());
+            }
             p = p.getpNext();
         }
         this.setPcbs(d);
@@ -215,20 +216,43 @@ public class VistaSimulacion extends javax.swing.JFrame {
         });
     }
     
+    public void updateEventLog(String logText) {
+        SwingUtilities.invokeLater(() -> {
+            this.eventLogArea.setText(logText);
+            // Auto-scroll to bottom
+            this.eventLogArea.setCaretPosition(this.eventLogArea.getDocument().getLength());
+        });
+    }
+    
     private void updateMetricsDisplay() {
         if (metrics != null) {
             String metricsText = metrics.getMetricsString();
             if (planificador != null) {
                 double fairness = metrics.getFairness(todos);
                 metricsText += String.format("\nEquidad: %.2f", fairness);
+                
+                if (planificador.getMemoryManager() != null) {
+                    metricsText += String.format("\n\nMemoria Disponible: %d MB", 
+                        planificador.getMemoryManager().getAvailableMemory());
+                    metricsText += String.format("\nMemoria Total: %d MB", 
+                        planificador.getMemoryManager().getTotalMemory());
+                    metricsText += String.format("\nUtilización de Memoria: %.2f%%", 
+                        planificador.getMemoryManager().getMemoryUtilization());
+                }
             }
             updateMetrics(metricsText);
         }
     }
     
+    private void updateEventLogDisplay() {
+        if (planificador != null && planificador.getLogger() != null) {
+            String log = planificador.getLogger().getEventsAsString();
+            updateEventLog(log);
+        }
+    }
+    
     private void toggleChart() {
         if (!chartVisible) {
-            // Mostrar gráfico
             chartContainerPanel.removeAll();
             chartContainerPanel.setLayout(new BorderLayout());
             chartContainerPanel.add(chartPanel, BorderLayout.CENTER);
@@ -237,7 +261,6 @@ public class VistaSimulacion extends javax.swing.JFrame {
             toggleChartButton.setText("Ocultar Gráfico");
             chartVisible = true;
         } else {
-            // Ocultar gráfico
             chartContainerPanel.removeAll();
             chartContainerPanel.revalidate();
             chartContainerPanel.repaint();
@@ -245,8 +268,39 @@ public class VistaSimulacion extends javax.swing.JFrame {
             chartVisible = false;
         }
     }
+    
+    private void generarProcesosAleatorios() {
+    Random rand = new Random();
 
-    @SuppressWarnings("unchecked")
+    for (int i = 0; i < 10; i++) {
+        int id = todos.getSize(); // obtiene el ID actual
+        String nombreProceso = "Proceso " + id; // nombre dinámico
+
+        int instrucciones = 20 + rand.nextInt(180); // 20-200 instrucciones
+        boolean isIOBound = rand.nextBoolean();
+        String tipo = isIOBound ? "I/O Bound" : "CPU Bound";
+
+        int ciclosExcepcion = isIOBound ? (5 + rand.nextInt(20)) : 1;
+        int duracionExcepcion = isIOBound ? (3 + rand.nextInt(10)) : 1;
+
+        Proceso p = new Proceso(
+            id,
+            nombreProceso,
+            tipo,
+            instrucciones,
+            ciclosExcepcion,
+            duracionExcepcion,
+            0
+        );
+
+        listolista.appendLast(p);
+        todos.appendLast(p);
+    }
+
+    this.uPcbs();
+}
+
+
     // <editor-fold defaultstate="collapsed" desc="Generated Code">                          
     private void initComponents() {
 
@@ -263,6 +317,7 @@ public class VistaSimulacion extends javax.swing.JFrame {
         duracionexcep = new javax.swing.JTextField();
         tipoproceso = new javax.swing.JComboBox<>();
         jLabel13 = new javax.swing.JLabel();
+        generarAleatoriosBtn = new javax.swing.JButton();
         jPanel1 = new javax.swing.JPanel();
         jScrollPane10 = new javax.swing.JScrollPane();
         metricsArea = new javax.swing.JTextArea();
@@ -299,6 +354,10 @@ public class VistaSimulacion extends javax.swing.JFrame {
         listosSuspendidos = new javax.swing.JTextArea();
         jLabel5 = new javax.swing.JLabel();
         jLabel7 = new javax.swing.JLabel();
+        jPanel5 = new javax.swing.JPanel();
+        jScrollPane11 = new javax.swing.JScrollPane();
+        eventLogArea = new javax.swing.JTextArea();
+        clearLogBtn = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -310,7 +369,7 @@ public class VistaSimulacion extends javax.swing.JFrame {
                 guardarprocesoActionPerformed(evt);
             }
         });
-        jPanel2.add(guardarproceso, new org.netbeans.lib.awtextra.AbsoluteConstraints(300, 300, 140, 30));
+        jPanel2.add(guardarproceso, new org.netbeans.lib.awtextra.AbsoluteConstraints(250, 300, 140, 30));
 
         nombre.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -362,6 +421,14 @@ public class VistaSimulacion extends javax.swing.JFrame {
 
         jLabel13.setText("Tipo:");
         jPanel2.add(jLabel13, new org.netbeans.lib.awtextra.AbsoluteConstraints(280, 160, 30, 20));
+
+        generarAleatoriosBtn.setText("Generar 10 Procesos Aleatorios");
+        generarAleatoriosBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                generarAleatoriosBtnActionPerformed(evt);
+            }
+        });
+        jPanel2.add(generarAleatoriosBtn, new org.netbeans.lib.awtextra.AbsoluteConstraints(400, 300, 200, 30));
 
         jTabbedPane1.addTab("Añadir", jPanel2);
 
@@ -521,6 +588,26 @@ public class VistaSimulacion extends javax.swing.JFrame {
 
         jTabbedPane1.addTab("Simulación", jPanel4);
 
+        jPanel5.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
+
+        eventLogArea.setEditable(false);
+        eventLogArea.setColumns(20);
+        eventLogArea.setRows(5);
+        eventLogArea.setFont(new java.awt.Font("Monospaced", 0, 12));
+        jScrollPane11.setViewportView(eventLogArea);
+
+        jPanel5.add(jScrollPane11, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 20, 710, 450));
+
+        clearLogBtn.setText("Limpiar Log");
+        clearLogBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                clearLogBtnActionPerformed(evt);
+            }
+        });
+        jPanel5.add(clearLogBtn, new org.netbeans.lib.awtextra.AbsoluteConstraints(320, 480, 120, 30));
+
+        jTabbedPane1.addTab("Log de Eventos", jPanel5);
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -557,6 +644,7 @@ public class VistaSimulacion extends javax.swing.JFrame {
 
                 this.jButton2.setEnabled(false);
                 this.guardarproceso.setEnabled(false);
+                this.generarAleatoriosBtn.setEnabled(false);
 
             } else {
                 javax.swing.JOptionPane.showMessageDialog(this, "Error: CPU o reloj no inicializados.");
@@ -579,8 +667,8 @@ public class VistaSimulacion extends javax.swing.JFrame {
                         nombreProceso,
                         tipo,
                         duracionnt,
-                        0,
-                        0,
+                        1,
+                        1,
                         0
                 );
             } 
@@ -637,6 +725,17 @@ public class VistaSimulacion extends javax.swing.JFrame {
         toggleChart();
     }                                                 
 
+    private void generarAleatoriosBtnActionPerformed(java.awt.event.ActionEvent evt) {                                                     
+        generarProcesosAleatorios();
+    }                                                    
+
+    private void clearLogBtnActionPerformed(java.awt.event.ActionEvent evt) {                                            
+        if (planificador != null && planificador.getLogger() != null) {
+            planificador.getLogger().clearEvents();
+            eventLogArea.setText("");
+        }
+    }                                           
+
     public static void main(String args[]) {
         try {
             for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
@@ -665,12 +764,14 @@ public class VistaSimulacion extends javax.swing.JFrame {
     // Variables declaration - do not modify                     
     private javax.swing.JTextArea bloqueados;
     private javax.swing.JTextArea bloqueadosSuspendidos;
-    private javax.swing.JPanel chartprivate;
-    javax.swing.JPanel chartContainerPanel;
+    private javax.swing.JPanel chartContainerPanel;
     private javax.swing.JTextField cicloexcep;
+    private javax.swing.JButton clearLogBtn;
     private javax.swing.JTextArea cpu1;
     private javax.swing.JTextField duracion;
     private javax.swing.JTextField duracionexcep;
+    private javax.swing.JTextArea eventLogArea;
+    private javax.swing.JButton generarAleatoriosBtn;
     private javax.swing.JButton guardarproceso;
     private javax.swing.JButton jButton2;
     private javax.swing.JLabel jLabel1;
@@ -693,8 +794,10 @@ public class VistaSimulacion extends javax.swing.JFrame {
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
+    private javax.swing.JPanel jPanel5;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane10;
+    private javax.swing.JScrollPane jScrollPane11;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane4;
     private javax.swing.JScrollPane jScrollPane6;
