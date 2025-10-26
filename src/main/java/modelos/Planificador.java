@@ -52,7 +52,6 @@ public class Planificador {
     public Proceso getProcess(){
         Proceso output = null;
         
-        // Try to reactivate suspended processes if memory is available
         tryReactivateSuspendedProcesses();
         
         if(this.readyList.isEmpty()){
@@ -66,7 +65,6 @@ public class Planificador {
             output = (Proceso) pAux.getValue();
             output.setEstado("Ejecucion");
             
-            // Allocate memory for the process
             if (!memoryManager.allocate(output.getMemoriaRequerida())) {
                 logger.logEvent("ADVERTENCIA: No se pudo asignar memoria para Proceso " + 
                                output.getNombre() + " (ID: " + output.getId() + ")");
@@ -83,7 +81,6 @@ public class Planificador {
     }
 
     private void tryReactivateSuspendedProcesses() {
-        // Try to reactivate suspended-ready processes
         Nodo current = suspendedReadyList.getHead();
         while (current != null) {
             Proceso p = (Proceso) current.getValue();
@@ -93,13 +90,13 @@ public class Planificador {
                 suspendedReadyList.delete(current);
                 p.reactivar();
                 readyList.appendLast(p);
+                sortReadyQueue(selectedAlgorithm);
                 logger.logEvent("Proceso " + p.getNombre() + " (ID: " + p.getId() + 
                               ") reactivado de Suspendido-Listo");
             }
             current = next;
         }
 
-        // Try to reactivate suspended-blocked processes
         current = suspendedBlockedList.getHead();
         while (current != null) {
             Proceso p = (Proceso) current.getValue();
@@ -118,27 +115,27 @@ public class Planificador {
     
     private void sortReadyQueue(int schedulingAlgorithm) {
         switch (schedulingAlgorithm) {
-            case 0: // FCFS
+            case 0:
                 readyList = sortByWaitingTime(readyList);
                 logger.logEvent("Cambio de algoritmo a FCFS");
                 break;
-            case 1: // Round Robin
+            case 1:
                 readyList = sortByWaitingTime(readyList);
                 logger.logEvent("Cambio de algoritmo a Round Robin");
                 break;
-            case 2: // SPN
+            case 2:
                 readyList = sortByDuration(readyList);
                 logger.logEvent("Cambio de algoritmo a SPN");
                 break;
-            case 3: // SRT
+            case 3:
                 readyList = sortByRemainingTime(readyList);
                 logger.logEvent("Cambio de algoritmo a SRT");
                 break;
-            case 4: // HRRN
+            case 4:
                 readyList = sortByHRR(readyList);
                 logger.logEvent("Cambio de algoritmo a HRRN");
                 break;
-            case 5: // Priority-based
+            case 5:
                 readyList = sortByPriority(readyList);
                 logger.logEvent("Cambio de algoritmo a Prioridad");
                 break;
@@ -165,7 +162,6 @@ public class Planificador {
     }
 
     private List sortByPriority(List list) {
-        // Lower priority number = higher priority (0 is highest)
         return bubbleSort(list, (p1, p2) -> Integer.compare(
             ((Proceso) p1).getPrioridad(),
             ((Proceso) p2).getPrioridad()
@@ -257,6 +253,7 @@ public class Planificador {
                                   ") suspendido (Listo) por falta de memoria");
                 } else {
                     readyList.appendLast(process);
+                    sortReadyQueue(selectedAlgorithm);
                 }
                 break;
             case "Suspendido-Listo":
@@ -353,6 +350,7 @@ public class Planificador {
                     logger.logEvent("Proceso (ID: " + id + ") sale de bloqueo pero es suspendido por falta de memoria");
                 } else {
                     readyList.appendLast(pAux);
+                    sortReadyQueue(selectedAlgorithm);
                     logger.logEvent("Proceso (ID: " + id + ") sale de bloqueo (operación I/O completada) y entra a cola de listos");
                 }
                 break;                
